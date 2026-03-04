@@ -42,5 +42,8 @@ func (u *UserActor) Receive(ctx actor.Context) {
 
 	case *messages.OrderConfirmed:
 		fmt.Println("[UserActor] order confirmed! OrderId:", msg.OrderId)
+		
+	case *actor.Stopping:
+		fmt.Println("[UserActor] stopping")
 	}
 }

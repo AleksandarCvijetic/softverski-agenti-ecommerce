@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -11,20 +12,28 @@ import (
 )
 
 func main() {
-	system := actor.NewActorSystem()
+	masterHost := os.Getenv("MASTER_HOST")
+	if masterHost == "" {
+		masterHost = "127.0.0.1"
+	}
 
+	workerAddr := os.Getenv("WORKER_ADDR")
+	if workerAddr == "" {
+		workerAddr = "127.0.0.1:8090"
+	}
+
+	system := actor.NewActorSystem()
 	r := remote.NewRemote(
 		system,
-		remote.Configure("127.0.0.1", 8080),
+		remote.Configure(masterHost, 8080),
 	)
 	r.Start()
 
-	// Malo cekamo da worker node bude spreman
 	time.Sleep(500 * time.Millisecond)
 
 	coordinatorPID, err := system.Root.SpawnNamed(
 		actor.PropsFromProducer(func() actor.Actor {
-			return actors.NewCoordinatorActor(r)
+			return actors.NewCoordinatorActor(r, workerAddr)
 		}),
 		"coordinator",
 	)
@@ -38,6 +47,6 @@ func main() {
 		}),
 	)
 
-	log.Println("MASTER NODE pokrenut na 8080")
+	log.Printf("MASTER NODE pokrenut na %s:8080, worker na %s\n", masterHost, workerAddr)
 	select {}
 }

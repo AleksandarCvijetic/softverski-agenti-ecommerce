@@ -12,12 +12,16 @@ import (
 
 type CoordinatorActor struct {
 	remoting    *remote.Remote
+	workerAddr  string
 	cartPID     *actor.PID
 	purchasePID *actor.PID
 }
 
-func NewCoordinatorActor(remoting *remote.Remote) actor.Actor {
-	return &CoordinatorActor{remoting: remoting}
+func NewCoordinatorActor(remoting *remote.Remote, workerAddr string) actor.Actor {
+	return &CoordinatorActor{
+		remoting:   remoting,
+		workerAddr: workerAddr,
+	}
 }
 
 func (c *CoordinatorActor) Receive(ctx actor.Context) {
@@ -26,8 +30,7 @@ func (c *CoordinatorActor) Receive(ctx actor.Context) {
 	case *actor.Started:
 		fmt.Println("[Coordinator] started, spawning remote actors...")
 
-		// Remotely spawnuj CartActor na workeru
-		cartResp, err := c.remoting.SpawnNamed("127.0.0.1:8090", "cart-actor", "cart", time.Second*5)
+		cartResp, err := c.remoting.SpawnNamed(c.workerAddr, "cart-actor", "cart", time.Second*5)
 		if err != nil {
 			fmt.Println("[Coordinator] ERROR spawning CartActor:", err)
 			return
@@ -35,8 +38,7 @@ func (c *CoordinatorActor) Receive(ctx actor.Context) {
 		c.cartPID = cartResp.Pid
 		fmt.Println("[Coordinator] CartActor spawned:", c.cartPID)
 
-		// Remotely spawnuj PurchaseActor na workeru
-		purchaseResp, err := c.remoting.SpawnNamed("127.0.0.1:8090", "purchase-actor", "purchase", time.Second*5)
+		purchaseResp, err := c.remoting.SpawnNamed(c.workerAddr, "purchase-actor", "purchase", time.Second*5)
 		if err != nil {
 			fmt.Println("[Coordinator] ERROR spawning PurchaseActor:", err)
 			return
@@ -44,7 +46,6 @@ func (c *CoordinatorActor) Receive(ctx actor.Context) {
 		c.purchasePID = purchaseResp.Pid
 		fmt.Println("[Coordinator] PurchaseActor spawned:", c.purchasePID)
 
-		// Prosledi PurchaseActor PID CartActor-u
 		ctx.Send(c.cartPID, &messages.SetPurchasePID{Pid: c.purchasePID})
 
 	case *actor.Stopping:
@@ -55,6 +56,7 @@ func (c *CoordinatorActor) Receive(ctx actor.Context) {
 			fmt.Println("[Coordinator] cartPID not ready yet")
 			return
 		}
+		fmt.Printf("[Coordinator] routing AddItem(%s, %d) → CartActor na workeru\n", msg.ProductId, msg.Quantity)
 		ctx.Send(c.cartPID, &messages.AddItem{
 			ProductId: msg.ProductId,
 			Quantity:  msg.Quantity,
@@ -65,7 +67,7 @@ func (c *CoordinatorActor) Receive(ctx actor.Context) {
 			fmt.Println("[Coordinator] cartPID not ready yet")
 			return
 		}
-		// Uzimamo ReplyTo iz UserCheckout poruke, ne iz ctx.Sender()
+		fmt.Println("[Coordinator] routing Checkout → CartActor na workeru")
 		ctx.Send(c.cartPID, &messages.Checkout{
 			ReplyTo: msg.ReplyTo,
 		})

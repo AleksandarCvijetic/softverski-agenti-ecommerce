@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: ecommerce-worker
+    environment:
+      - WORKER_HOST=worker
+      - WORKER_PORT=8090
+    ports:
+      - "8090:8090"
+    networks:
+      ecommerce-net:
+        ipv4_address: 172.20.0.2
+
+  master:
+    build:
+      context: .
+      dockerfile: Dockerfile.master
+    container_name: ecommerce-master
+    environment:
+      - MASTER_HOST=master
+      - MASTER_PORT=8080
+      - WORKER_ADDR=172.20.0.2:8090
+    ports:
+      - "8080:8080"
+    depends_on:
+      - worker
+    networks:
+      ecommerce-net:
+        ipv4_address: 172.20.0.3
+
+networks:
+  ecommerce-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

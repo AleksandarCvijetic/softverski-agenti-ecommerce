@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/asynkron/protoactor-go/remote"
@@ -10,18 +11,30 @@ import (
 )
 
 func main() {
-	system := actor.NewActorSystem()
+	host := os.Getenv("WORKER_HOST")
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	port := os.Getenv("WORKER_PORT")
+	if port == "" {
+		port = "8090"
+	}
 
+	portInt := 8090
+	if port == "8090" {
+		portInt = 8090
+	}
+
+	system := actor.NewActorSystem()
 	r := remote.NewRemote(
 		system,
-		remote.Configure("127.0.0.1", 8090),
+		remote.Configure(host, portInt),
 	)
 	r.Start()
 
-	// Registrujemo aktore po imenu - master ce ih remotely spawnovati
 	r.Register("cart", actor.PropsFromProducer(actors.NewCartActor))
 	r.Register("purchase", actor.PropsFromProducer(actors.NewPurchaseActor))
 
-	log.Println("WORKER NODE pokrenut na 8090, ceka remote spawn...")
+	log.Printf("WORKER NODE pokrenut na %s:%d\n", host, portInt)
 	select {}
 }
