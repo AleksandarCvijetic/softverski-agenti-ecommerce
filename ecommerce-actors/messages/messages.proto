@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package messages;
+option go_package = "ecommerce-actors/messages";
+
+import "actor.proto";
+
+message UserAddItem {
+  string productId = 1;
+  int32 quantity = 2;
+}
+
+message UserCheckout {
+  actor.PID replyTo = 1;
+}
+
+message SetPurchasePID {
+  actor.PID pid = 1;
+}
+
+message AddItem {
+  string productId = 1;
+  int32 quantity = 2;
+}
+
+message Checkout {
+  actor.PID replyTo = 1;
+}
+
+message ProcessOrder {
+  actor.PID replyTo = 1;
+  map<string, int32> items = 2;
+  double totalPrice = 3;
+}
+
+message OrderConfirmed {
+  string orderId = 1;
+}
